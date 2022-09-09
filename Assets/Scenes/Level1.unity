@@ -165,8 +165,8 @@ WheelCollider:
   m_Center: {x: -0.06, y: 0.18, z: 0}
   m_Radius: 0.5
   m_SuspensionSpring:
-    spring: 35000
-    damper: 1500
+    spring: 15000
+    damper: 1200
     targetPosition: 0.5
   m_SuspensionDistance: 0.3
   m_ForceAppPointDistance: 0
@@ -1203,8 +1203,8 @@ WheelCollider:
   m_Center: {x: -0.06, y: 0.18, z: 0}
   m_Radius: 0.5
   m_SuspensionSpring:
-    spring: 35000
-    damper: 1500
+    spring: 15000
+    damper: 1200
     targetPosition: 0.5
   m_SuspensionDistance: 0.3
   m_ForceAppPointDistance: 0
@@ -2868,8 +2868,8 @@ GameObject:
   - component: {fileID: 953636404}
   - component: {fileID: 953636403}
   - component: {fileID: 953636401}
-  - component: {fileID: 953636400}
   - component: {fileID: 953636402}
+  - component: {fileID: 953636400}
   m_Layer: 0
   m_Name: Car
   m_TagString: Untagged
@@ -2889,6 +2889,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 302beb2d2560f664da3aee2929900bd7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  axles: []
+  maxReverseTorque: -50
+  maxTurningAngle: 30
 --- !u!54 &953636401
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -5727,8 +5730,8 @@ WheelCollider:
   m_Center: {x: -0.06, y: 0.18, z: 0}
   m_Radius: 0.5
   m_SuspensionSpring:
-    spring: 35000
-    damper: 1500
+    spring: 15000
+    damper: 1200
     targetPosition: 0.5
   m_SuspensionDistance: 0.2
   m_ForceAppPointDistance: 0
@@ -6117,8 +6120,8 @@ WheelCollider:
   m_Center: {x: -0.06, y: 0.18, z: 0}
   m_Radius: 0.5
   m_SuspensionSpring:
-    spring: 35000
-    damper: 1500
+    spring: 15000
+    damper: 1200
     targetPosition: 0.5
   m_SuspensionDistance: 0.3
   m_ForceAppPointDistance: 0
