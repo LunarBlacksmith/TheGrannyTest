@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -12,15 +13,6 @@ public class PlayerMovement : MonoBehaviour
     public List<AxleInfo> axles;
     #endregion
     #region Private Fields
-    //[Tooltip("DELETE MY SERIALIZEDFIELD TAG WHEN YOU FINISH TESTING THE MAX TORQUE LIMIT, I AM A TESTER VARIABLE ONLY.\nEND ME. PLEASE.")]
-    //[SerializeField] private float _testerMaxMotorTorque = 1000f;
-    //[Tooltip("DELETE MY SERIALIZEDFIELD TAG WHEN YOU FINISH TESTING THE MAX TURNING ANGLE LIMIT, I AM A TESTER VARIABLE ONLY.")]
-    //[SerializeField] private float _testerMaxTurningAngle = 90f;
-
-    
-    //[SerializeField] private float maxReverseTorque = -50f;
-    //[SerializeField] private float maxTurningAngle = 30f;
-
     [Tooltip("This value represents how many axles (each axle having two wheels) there are on the vehicle." +
         "\nTypically, unless it's a lorry or construction vehicle, they will have two axles. " +
         "Bi-wheeled vehicles would have 1 axle, containing only the front and rear wheels." +
@@ -35,6 +27,11 @@ public class PlayerMovement : MonoBehaviour
         "\nThen wheelColliderChildIndex has a value of 1 because VisualWheel is the second child in the array." +
         "\nWARNING: All wheel colliders must therefore have the visual wheels all in the same child index spot!")]
     [SerializeField] private ushort wheelColliderChildIndex = 0;
+
+    [Tooltip("This variable is the index value of the child of the Cylinder Collider game objects " +
+        "where the child game object is the cylinder collider used for trigger detections." +
+        "\nWARNING: All wheel colliders must have the cylinder colliders all in the same child index spot!")]
+    [SerializeField] private ushort _capsuleColliderChildIndex = 1;
 
     // actual value used for setting the motor's max torque on the wheel colliders
     [Tooltip("This value represents the maximum amount of force (torque) the wheel colliders " +
@@ -60,13 +57,18 @@ public class PlayerMovement : MonoBehaviour
     [Range(0f, 90f)]
     [SerializeField] private float _maxSteeringAngle = 30f;
 
-    private float _motorTorque;     // actual value used to set the motor's torque value on the wheel colliders
+    // actual value used to set the motor's torque value on the wheel colliders
+    [SerializeField] private float _motorTorque;
+
     private float _reverseTorque;   // actual value used for setting the motor's current torque in a backwards direction
     private float _steeringAngle;   // actual value used for calulating current wheel turn angles
+    private int   _numberOfCapsules;// the stored value of the number of capsule colliders on the car
     
     private Transform _visualWheelTransform;    // used to apply visual changes to the wheel model when the wheel collider is changing
     private Vector3 _visualWheelPos;            // used to apply visual changes to the wheel model when the wheel collider is changing
     private Quaternion _visualWheelRot;         // used to apply visual changes to the wheel model when the wheel collider is changing
+
+    private List<CapsuleCollider> _capsuleColliders = new List<CapsuleCollider>();
     #endregion
     #region Public Properties
     // the max value the motor's torque can possibly reach.
@@ -79,13 +81,13 @@ public class PlayerMovement : MonoBehaviour
     public float MotorTorque
     {
         get { return _motorTorque; }
-        private set 
+        set
         { 
             // if the value entered is greater than the max value torque can be set to
             // set the value to the max torque, otherwise set it as itself.
             value = value > MaxMotorTorque ? MaxMotorTorque : value;
             // if the value entered is greater than or equal to the reverse torque variable
-            // AND it's less than or equal to _testerMaxMotorTorque (the hardcoded max torque limit)
+            // AND it's less than or equal to MaxMotorTorque then
             // set private motorTorque to the value, otherwise to itself.
             // (We are clamping the max reverse torque between -100 and 0 in Start() and OnValidate())
             _motorTorque = (value >= MaxReverseTorque && value <= MaxMotorTorque) ? value : _motorTorque; 
@@ -146,19 +148,19 @@ public class PlayerMovement : MonoBehaviour
         // set the private max reverse torque to the value, otherwise set it to itself
         set { _maxReverseTorque =  value <= 0 ? value : _maxReverseTorque; }
     }
+
     #endregion
 
     void Start()
     {
         // preventing the max reverse torque being less than -100 NM or above 0 NM
-        MaxReverseTorque = Mathf.Clamp(MaxReverseTorque, _maxReverseTorque, 0f);
-
+        MaxReverseTorque = Mathf.Clamp(MaxReverseTorque, _maxReverseTorque, 0f);        
         MaxSteeringAngle = Mathf.Clamp(MaxSteeringAngle, 0f, _maxSteeringAngle);
-    }
+        Debug.Log($"<color=orange>Clamping</color> the <color=blue>MaxReverseTorque</color> and <color=blue>MaxSteeringAngle</color> variables.");
 
-    void Update()
-    {
-        
+        // class-accessible number of colliders for the wheels on the car
+        // simultaneously filling out the class-accessible list of capsule colliders
+        _numberOfCapsules = GetCapsuleCollidersFromWheel(_capsuleColliders);
     }
 
     private void FixedUpdate()
@@ -183,7 +185,7 @@ public class PlayerMovement : MonoBehaviour
         SteeringAngle = MaxSteeringAngle * Input.GetAxis("Horizontal");
 
         // a for loop to cycle through the axles (determined by axleCount)
-        for (int loopCount = 0; loopCount < axleCount-1; ++loopCount)
+        for (int loopCount = 0; loopCount < axleCount; ++loopCount)
         {
             // if axle x has the Steering boolean true
             if (axles[loopCount].hasSteering)
@@ -203,23 +205,24 @@ public class PlayerMovement : MonoBehaviour
             ApplyTransformToVisualWheels(axles[loopCount].nsWheelCol);
             ApplyTransformToVisualWheels(axles[loopCount].osWheelCol);
         }
+        // a variable to be able to loop through 4 colliders while only 2 axles
+        int currentCapCollider = 0;
+        // looping through each axle
+        foreach (AxleInfo axle in axles)
+        {
+            // setting each wheel collider within current axle to ignore the physics of the current capsule collider
+            SetWheelsToIgnoreTheirCapsules(_capsuleColliders[currentCapCollider], axle.nsWheelCol);
+            // increment the current capsule collider to move down through the list of Capsule Colliders
+            ++currentCapCollider;
+            SetWheelsToIgnoreTheirCapsules(_capsuleColliders[currentCapCollider], axle.osWheelCol);
+            ++currentCapCollider;
+        }
+        // reset the current capsule collider tracker in case extra code is added later that uses it
+        currentCapCollider = 0;
+                   
     }
 
-    private void OnValidate()
-    {
-        // preventing the max reverse torque ever becoming less than -100 NM
-        // or above 0 NM when changing the value in the Editor
-        //MaxReverseTorque = Mathf.Clamp(MaxReverseTorque, _maxReverseTorque, 0f);
-
-        // preventing the max turning angle ever becoming more than 90 degrees
-        // when changing the value in the Editor
-        //MaxSteeringAngle = Mathf.Clamp(MaxSteeringAngle, 0f, _maxSteeringAngle);
-
-        // max reverse torque can't be negative
-        //if (Mathf.Sign(maxReverseTorque) != -1)
-        //{ maxReverseTorque = -maxReverseTorque; }
-    }
-
+    #region Custom Methods
     public void ApplyTransformToVisualWheels(WheelCollider wheelCol_p)
     {
         // if there are no children under the Wheel Collider game object
@@ -239,4 +242,52 @@ public class PlayerMovement : MonoBehaviour
         _visualWheelTransform.transform.position = _visualWheelPos;
         _visualWheelTransform.transform.rotation = _visualWheelRot;
     }
+
+    /// <summary>
+    /// This method is used to populate the local List of CapsuleColliders to make their manipulation easier to handle.
+    /// It gets its WheelCollider gameobject information from the local: List of AxleInfo - axles.
+    /// </summary>
+    /// <param name="collidersForTrigger_p"></param>
+    /// <returns></returns>
+    private int GetCapsuleCollidersFromWheel(List<CapsuleCollider> collidersForTrigger_p)
+    {
+        int collidersCount = 0;
+
+        // this loops through the axles for every axle there is so that we can easily get things such as the wheel colliders
+        for (int loopCount = 0; loopCount < axleCount; ++loopCount)
+        {
+            // add the capsule collider we use for OnTriggerEnter() events that is a child of the current wheel collider gameobject
+            // (we add both wheels belonging to one axle)
+            collidersForTrigger_p.Add(axles[loopCount].nsWheelCol.transform.GetChild(_capsuleColliderChildIndex).GetComponent<CapsuleCollider>());
+            collidersForTrigger_p.Add(axles[loopCount].osWheelCol.transform.GetChild(_capsuleColliderChildIndex).GetComponent<CapsuleCollider>());
+        }
+        // looping through the list of colliders on the car
+        for (int loopCount2 = 0; loopCount2 < collidersForTrigger_p.Count; ++loopCount2)
+        // count increase for each collider in the list
+        { ++collidersCount; }
+
+        return collidersCount;
+    }
+
+    /// <summary>
+    /// Wheel Colliders can't activate OnTriggerEnter(), so Capsule Colliders overlay them in the game scene. This method sets the
+    /// wheel collider passed to it to ignore the physics (ergo collision) with its overlaying capsule collider.
+    /// </summary>
+    /// <param name="colliderForTrigger_p"></param>
+    /// <param name="wheelCol_p"></param>
+    private void SetWheelsToIgnoreTheirCapsules(CapsuleCollider colliderForTrigger_p, WheelCollider wheelCol_p)
+    {
+            // this sets 2 colliders passed to the method to ignore each other for physics collisions
+            Physics.IgnoreCollision
+            // we are passing the wheel collider from the parameter
+            // and the capsule collider we use for OnTriggerEnter() events at the index in the list as given in the parameters
+            (wheelCol_p, colliderForTrigger_p);        
+    }
+    /*
+    /// <summary>
+    /// Subtracts StoppingValue from MotorTorque if MotorTorque is greater than 0f.
+    /// </summary>
+    private void SlowDown()
+    { MotorTorque = MotorTorque > 0f ? (MotorTorque -= StoppingValue) : MotorTorque; }*/
+    #endregion
 }
