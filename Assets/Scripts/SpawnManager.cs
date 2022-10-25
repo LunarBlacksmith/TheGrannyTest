@@ -71,12 +71,27 @@ public class SpawnManager : MonoBehaviour
         // the passed BoxCollider's bound information
         _boundariesForSpawning = spawnAreaBox_p.bounds;
 
-        Debug.Log($"-Y Boundary for spawn: {-_boundariesForSpawning.extents.y}");
+        // since the centre on the Y axis of the bounds is not 0, we have to manually calculate the 
+        // furthest extents on the Y axis. extents.y will return the distance between the centre and the 
+        // furthest Y point, NOT the world space position. So to get the actual world space position
+        // we simply add or subtract the extent.y value from the centre's Y position (which is a float)
+        // depending on if we want the top or bottom value. We have to make the returned extents.y value
+        // always positive (Mathf.Abs()) because if the centre is negative we want to make sure the bottom
+        // is going further down from the centre rather than up. ((-10) - 5 = -15. (-10) - (-5) = -5.)
+        float _bottomYExtent = _boundariesForSpawning.center.y - Mathf.Abs(_boundariesForSpawning.extents.y);
+        float _topYExtent = _boundariesForSpawning.center.y + Mathf.Abs(_boundariesForSpawning.extents.y);
+
+        /*
+        Debug.Log($"-Y Boundary for spawn: {_bottomYExtent}");
+        Debug.Log($"Y Boundary for spawn: {_topYExtent}");
+        Debug.Log($"Extents of Boundaries for spawn: {_boundariesForSpawning.extents}");
+        Debug.Log($"Centre of Boundaries for spawn: {_boundariesForSpawning.center}");
+        */
 
         // setting each axes position to a random value within the relative axes' farthest extent
         // (Note: since it is a BoxCollider, each axes' extent will be exactly the same all across that face)
+        _spawnOffsetY = Random.Range(_bottomYExtent, _topYExtent);
         _spawnOffsetX = Random.Range(-_boundariesForSpawning.extents.x, _boundariesForSpawning.extents.x);
-        _spawnOffsetY = Random.Range(-_boundariesForSpawning.extents.y, _boundariesForSpawning.extents.y);
         _spawnOffsetZ = Random.Range(-_boundariesForSpawning.extents.z, _boundariesForSpawning.extents.z);
 
         // set the rng value for spawn position on each axis to our Vector3's relative axis
@@ -89,9 +104,10 @@ public class SpawnManager : MonoBehaviour
         _minSize = _maxSize > _minSize ? _minSize : _maxSize - 0.01f;
 
         // set the final size multiplier for the localScale adjustment of the spawned prefab to a random number
-        // between the number resulting from the percentage of the localScale based on min size,
-        // and the number resulting from the percentage of the localScale based on max size.
-        // (if the localScale.x = 1, and minSize = 0.25f, the resulting number would be 0.25f)
+        // between the number resulting from the percentage of the global Scale based on min size,
+        // and the number resulting from the percentage of the global Scale based on max size.
+        // (if the lossyScale.x = 1, and minSize = 0.25f, the resulting number would be 0.25f)
+        // PREFABS THAT ARE NOT INSTANTIATED DO NOT HAVE LOCAL SCALES
         _sizeMultiplier = Random.Range(_cubePrefab.transform.lossyScale.x * _minSize, _cubePrefab.transform.lossyScale.x * _maxSize);
         // check the boolean value of isMoving, relating to our prefab to spawn.
         switch (isMoving_p)
@@ -103,16 +119,15 @@ public class SpawnManager : MonoBehaviour
                     // so we don't edit the prefab constantly.
                     GameObject objectDelete = Instantiate(_cubePrefabMoving);
                     _tempPrefab = objectDelete;
-                    Debug.Log($"Name of the temp prefab: {_tempPrefab.name}");
+                    //Debug.Log($"Name of the temp prefab: {_tempPrefab.name}");
                     // create the object in the scene at the random WorldSpace-spawn position, and a rotation of 0.
                     _tempPrefab = Instantiate(_tempPrefab, _spawnPos, Quaternion.identity);
                     // set the localScale (size) of the temp prefab based on our random size multiplier.
                     _tempPrefab.transform.localScale *= _sizeMultiplier;
-                    Debug.LogWarning($"Local Scale for new Cube prefab: {_tempPrefab.transform.localScale}");
-                    Debug.LogWarning($"Size Multiplier for new Cube prefab: {_sizeMultiplier}");
-                    // increment the counter for cubes spawned
-
+                    //Debug.LogWarning($"Local Scale for new Cube prefab: {_tempPrefab.transform.localScale}");
+                    //Debug.LogWarning($"Size Multiplier for new Cube prefab: {_sizeMultiplier}");
                     Debug.Log($"Number of Cubes spawned (before increment): {NumberOfCubesSpawned}");
+                    // increment the counter for cubes spawned
                     ++NumberOfCubesSpawned;
                     Debug.Log($"Number of Cubes spawned (after increment): {NumberOfCubesSpawned}");
 
@@ -136,8 +151,8 @@ public class SpawnManager : MonoBehaviour
                     _tempPrefab = objectDelete;
                     _tempPrefab = Instantiate(_tempPrefab, _spawnPos, Quaternion.identity);
                     _tempPrefab.transform.localScale *= _sizeMultiplier;
-                    Debug.LogWarning($"Local Scale for new Cube prefab: {_tempPrefab.transform.localScale}");
-                    Debug.LogWarning($"Size Multiplier for new Cube prefab: {_sizeMultiplier}");
+                    //Debug.LogWarning($"Local Scale for new Cube prefab: {_tempPrefab.transform.localScale}");
+                    //Debug.LogWarning($"Size Multiplier for new Cube prefab: {_sizeMultiplier}");
                     
                     Debug.Log($"Number of Cubes spawned (before increment): {NumberOfCubesSpawned}");
                     ++NumberOfCubesSpawned;
@@ -170,9 +185,13 @@ public class SpawnManager : MonoBehaviour
         }
 
         _boundariesForSpawning = spawnAreaBox_p.bounds;
+
+        float _bottomYExtent = _boundariesForSpawning.center.y - Mathf.Abs(_boundariesForSpawning.extents.y);
+        float _topYExtent = _boundariesForSpawning.center.y + Mathf.Abs(_boundariesForSpawning.extents.y);
+               
+        _spawnOffsetY = Random.Range(_bottomYExtent, _topYExtent);
         _spawnOffsetX = Random.Range(-_boundariesForSpawning.extents.x, _boundariesForSpawning.extents.x);
-        _spawnOffsetY = Random.Range(-_boundariesForSpawning.extents.x, _boundariesForSpawning.extents.x);
-        _spawnOffsetZ = Random.Range(-_boundariesForSpawning.extents.x, _boundariesForSpawning.extents.x);
+        _spawnOffsetZ = Random.Range(-_boundariesForSpawning.extents.z, _boundariesForSpawning.extents.z);
 
         _spawnPos.x = _spawnOffsetX;
         _spawnPos.y = _spawnOffsetY;
@@ -197,13 +216,13 @@ public class SpawnManager : MonoBehaviour
                     Debug.Log($"Name of the temp prefab: {_tempPrefab.name}");
                     _tempPrefab = Instantiate(_tempPrefab, _spawnPos, Quaternion.identity);
                     _tempPrefab.transform.localScale *= _sizeMultiplier;
-                    Debug.LogWarning($"Local Scale for new Cube prefab: {_tempPrefab.transform.localScale}");
-                    Debug.LogWarning($"Size Multiplier for new Cube prefab: {_sizeMultiplier}");
+                    Debug.LogWarning($"Local Scale for new Sphere prefab: {_tempPrefab.transform.localScale}");
+                    Debug.LogWarning($"Size Multiplier for new Sphere prefab: {_sizeMultiplier}");
                     // increment the counter for cubes spawned
 
-                    Debug.Log($"Number of Cubes spawned (before increment): {NumberOfSpheresSpawned}");
+                    Debug.Log($"Number of Spheres spawned (before increment): {NumberOfSpheresSpawned}");
                     ++NumberOfSpheresSpawned;
-                    Debug.Log($"Number of Cubes spawned (after increment): {NumberOfSpheresSpawned}");
+                    Debug.Log($"Number of Spheres spawned (after increment): {NumberOfSpheresSpawned}");
 
                     Destroy(objectDelete);
                     if (_tempPrefab.name.Contains("(Clone)"))
@@ -220,12 +239,12 @@ public class SpawnManager : MonoBehaviour
                     _tempPrefab = objectDelete;
                     _tempPrefab = Instantiate(_tempPrefab, _spawnPos, Quaternion.identity);
                     _tempPrefab.transform.localScale *= _sizeMultiplier;
-                    Debug.LogWarning($"Local Scale for new Cube prefab: {_tempPrefab.transform.localScale}");
-                    Debug.LogWarning($"Size Multiplier for new Cube prefab: {_sizeMultiplier}");
+                    Debug.LogWarning($"Local Scale for new Sphere prefab: {_tempPrefab.transform.localScale}");
+                    Debug.LogWarning($"Size Multiplier for new Sphere prefab: {_sizeMultiplier}");
 
-                    Debug.Log($"Number of Cubes spawned (before increment): {NumberOfSpheresSpawned}");
+                    Debug.Log($"Number of Spheres spawned (before increment): {NumberOfSpheresSpawned}");
                     ++NumberOfSpheresSpawned;
-                    Debug.Log($"Number of Cubes spawned (before increment): {NumberOfSpheresSpawned}");
+                    Debug.Log($"Number of Spheres spawned (before increment): {NumberOfSpheresSpawned}");
 
                     Destroy(objectDelete);
                     if (_tempPrefab.name.Contains("(Clone)"))
